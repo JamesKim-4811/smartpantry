@@ -10,17 +10,17 @@ export const inventoryService = {
     return inventoryRepository.findExpiring(householdId, withinDays);
   },
 
-  create(input: CreateInventoryEntryInput) {
-    const id = inventoryRepository.create(input);
+  async create(input: CreateInventoryEntryInput) {
+    const id = await inventoryRepository.create(input);
     return { entry_id: id };
   },
 
-  update(id: number, input: UpdateInventoryEntryInput) {
-    inventoryRepository.update(id, input);
+  async update(id: number, input: UpdateInventoryEntryInput) {
+    await inventoryRepository.update(id, input);
     return { entry_id: id, ...input };
   },
 
-  delete(id: number) {
-    inventoryRepository.delete(id);
+  async delete(id: number) {
+    await inventoryRepository.delete(id);
   },
 };

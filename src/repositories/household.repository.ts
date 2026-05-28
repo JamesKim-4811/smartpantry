@@ -1,27 +1,27 @@
-import { query, execute } from "../queryHelper";
+import prisma from "../db";
 import { Household } from "../models";
 
 export const householdRepository = {
-  findAll(): Household[] {
-    return query<Household>("SELECT * FROM Household ORDER BY household_id");
+  async findAll(): Promise<Household[]> {
+    const rows = await prisma.household.findMany({ orderBy: { household_id: "asc" } });
+    return rows.map((r) => ({ household_id: r.household_id, name: r.name }));
   },
 
-  findById(id: number): Household | undefined {
-    return query<Household>(
-      "SELECT * FROM Household WHERE household_id = ?",
-      [id]
-    )[0];
+  async findById(id: number): Promise<Household | undefined> {
+    const row = await prisma.household.findUnique({ where: { household_id: id } });
+    return row ? { household_id: row.household_id, name: row.name } : undefined;
   },
 
-  create(name: string): number {
-    return execute("INSERT INTO Household (name) VALUES (?)", [name]);
+  async create(name: string): Promise<number> {
+    const row = await prisma.household.create({ data: { name } });
+    return row.household_id;
   },
 
-  update(id: number, name: string): void {
-    execute("UPDATE Household SET name = ? WHERE household_id = ?", [name, id]);
+  async update(id: number, name: string): Promise<void> {
+    await prisma.household.update({ where: { household_id: id }, data: { name } });
   },
 
-  delete(id: number): void {
-    execute("DELETE FROM Household WHERE household_id = ?", [id]);
+  async delete(id: number): Promise<void> {
+    await prisma.household.delete({ where: { household_id: id } });
   },
 };

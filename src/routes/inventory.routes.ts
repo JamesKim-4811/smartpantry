@@ -1,30 +1,27 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { inventoryService } from "../services/inventory.service";
 
 export const inventoryRouter = Router();
 
-// GET /api/households/:householdId/inventory
-inventoryRouter.get("/household/:householdId", (req: Request, res: Response) => {
-  res.json(inventoryService.getByHousehold(Number(req.params.householdId)));
+inventoryRouter.get("/household/:householdId", async (req: Request, res: Response, next: NextFunction) => {
+  try { res.json(await inventoryService.getByHousehold(Number(req.params.householdId))); } catch (e) { next(e); }
 });
 
-// GET /api/households/:householdId/inventory/expiring?days=3
-inventoryRouter.get("/household/:householdId/expiring", (req: Request, res: Response) => {
-  const days = Number(req.query.days ?? 3);
-  res.json(inventoryService.getExpiring(Number(req.params.householdId), days));
+inventoryRouter.get("/household/:householdId/expiring", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const days = Number(req.query.days ?? 3);
+    res.json(await inventoryService.getExpiring(Number(req.params.householdId), days));
+  } catch (e) { next(e); }
 });
 
-inventoryRouter.post("/", (req: Request, res: Response) => {
-  const result = inventoryService.create(req.body);
-  res.status(201).json(result);
+inventoryRouter.post("/", async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(201).json(await inventoryService.create(req.body)); } catch (e) { next(e); }
 });
 
-inventoryRouter.put("/:id", (req: Request, res: Response) => {
-  const result = inventoryService.update(Number(req.params.id), req.body);
-  res.json(result);
+inventoryRouter.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
+  try { res.json(await inventoryService.update(Number(req.params.id), req.body)); } catch (e) { next(e); }
 });
 
-inventoryRouter.delete("/:id", (req: Request, res: Response) => {
-  inventoryService.delete(Number(req.params.id));
-  res.json({ deleted: true });
+inventoryRouter.delete("/:id", async (req: Request, res: Response, next: NextFunction) => {
+  try { await inventoryService.delete(Number(req.params.id)); res.json({ deleted: true }); } catch (e) { next(e); }
 });

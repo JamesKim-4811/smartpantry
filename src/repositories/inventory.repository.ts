@@ -1,90 +1,122 @@
-import { query, execute } from "../queryHelper";
+import prisma from "../db";
 import {
   InventoryEntryView,
+  StorageLocation,
   CreateInventoryEntryInput,
   UpdateInventoryEntryInput,
 } from "../models";
 
+function daysUntilExpiry(expirationDate: string | null): number | null {
+  if (!expirationDate) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const exp = new Date(expirationDate);
+  exp.setHours(0, 0, 0, 0);
+  return Math.round((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function toView(entry: {
+  entry_id: number;
+  household_id: number;
+  food_item_id: number;
+  unit_id: number;
+  added_by_user_id: number;
+  quantity: number;
+  purchase_date: string;
+  expiration_date: string | null;
+  storage_location: string;
+  food_item: { name: string };
+  unit: { unit_name: string };
+  added_by: { first_name: string; last_name: string };
+}): InventoryEntryView {
+  return {
+    entry_id: entry.entry_id,
+    household_id: entry.household_id,
+    food_item_id: entry.food_item_id,
+    unit_id: entry.unit_id,
+    added_by_user_id: entry.added_by_user_id,
+    quantity: entry.quantity,
+    purchase_date: entry.purchase_date,
+    expiration_date: entry.expiration_date,
+    storage_location: entry.storage_location as StorageLocation,
+    food_item: entry.food_item.name,
+    unit_name: entry.unit.unit_name,
+    added_by: `${entry.added_by.first_name} ${entry.added_by.last_name}`,
+    days_until_expiry: daysUntilExpiry(entry.expiration_date),
+  };
+}
+
+const includeRelations = {
+  food_item: true,
+  unit: true,
+  added_by: true,
+} as const;
+
 export const inventoryRepository = {
-  findByHousehold(householdId: number): InventoryEntryView[] {
-    return query<InventoryEntryView>(
-      `SELECT
-         ie.entry_id, fi.name AS food_item, fi.food_item_id,
-         ie.quantity, u.unit_name, u.unit_id,
-         ie.storage_location, ie.expiration_date, ie.purchase_date,
-         ie.household_id, ie.added_by_user_id,
-         (julianday(ie.expiration_date) - julianday('now')) AS days_until_expiry,
-         (usr.first_name || ' ' || usr.last_name) AS added_by
-       FROM InventoryEntry ie
-       JOIN FoodItem fi ON ie.food_item_id = fi.food_item_id
-       JOIN Unit u ON ie.unit_id = u.unit_id
-       JOIN User usr ON ie.added_by_user_id = usr.user_id
-       WHERE ie.household_id = ?
-       ORDER BY ie.expiration_date ASC`,
-      [householdId]
-    );
+  async findByHousehold(householdId: number): Promise<InventoryEntryView[]> {
+    const rows = await prisma.inventoryEntry.findMany({
+      where: { household_id: householdId },
+      include: includeRelations,
+      orderBy: { expiration_date: "asc" },
+    });
+    return rows.map(toView);
   },
 
-  findExpiring(householdId: number, withinDays: number): InventoryEntryView[] {
-    return query<InventoryEntryView>(
-      `SELECT
-         ie.entry_id, fi.name AS food_item, fi.food_item_id,
-         ie.quantity, u.unit_name, u.unit_id,
-         ie.storage_location, ie.expiration_date, ie.purchase_date,
-         ie.household_id, ie.added_by_user_id,
-         CAST(julianday(ie.expiration_date) - julianday('now') AS INTEGER) AS days_until_expiry,
-         (usr.first_name || ' ' || usr.last_name) AS added_by
-       FROM InventoryEntry ie
-       JOIN FoodItem fi ON ie.food_item_id = fi.food_item_id
-       JOIN Unit u ON ie.unit_id = u.unit_id
-       JOIN User usr ON ie.added_by_user_id = usr.user_id
-       WHERE ie.household_id = ?
-         AND ie.expiration_date IS NOT NULL
-         AND (julianday(ie.expiration_date) - julianday('now')) <= ?
-         AND (julianday(ie.expiration_date) - julianday('now')) >= 0
-       ORDER BY ie.expiration_date ASC`,
-      [householdId, withinDays]
-    );
+  async findExpiring(householdId: number, withinDays: number): Promise<InventoryEntryView[]> {
+    const rows = await prisma.inventoryEntry.findMany({
+      where: {
+        household_id: householdId,
+        expiration_date: { not: null },
+      },
+      include: includeRelations,
+      orderBy: { expiration_date: "asc" },
+    });
+    return rows
+      .map(toView)
+      .filter(
+        (e) =>
+          e.days_until_expiry !== null &&
+          e.days_until_expiry >= 0 &&
+          e.days_until_expiry <= withinDays
+      );
   },
 
-  // Used by recipe suggestion logic
-  getTotalStock(householdId: number, foodItemId: number): number {
-    const result = query<{ total: number }>(
-      `SELECT COALESCE(SUM(quantity), 0) AS total
-       FROM InventoryEntry
-       WHERE household_id = ? AND food_item_id = ?`,
-      [householdId, foodItemId]
-    );
-    return result[0]?.total ?? 0;
+  async getTotalStock(householdId: number, foodItemId: number): Promise<number> {
+    const result = await prisma.inventoryEntry.aggregate({
+      where: { household_id: householdId, food_item_id: foodItemId },
+      _sum: { quantity: true },
+    });
+    return result._sum.quantity ?? 0;
   },
 
-  create(input: CreateInventoryEntryInput): number {
-    return execute(
-      `INSERT INTO InventoryEntry
-         (household_id, food_item_id, unit_id, added_by_user_id, quantity, purchase_date, expiration_date, storage_location)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        input.household_id,
-        input.food_item_id,
-        input.unit_id,
-        input.added_by_user_id,
-        input.quantity,
-        input.purchase_date,
-        input.expiration_date ?? null,
-        input.storage_location,
-      ]
-    );
+  async create(input: CreateInventoryEntryInput): Promise<number> {
+    const row = await prisma.inventoryEntry.create({
+      data: {
+        household_id: input.household_id,
+        food_item_id: input.food_item_id,
+        unit_id: input.unit_id,
+        added_by_user_id: input.added_by_user_id,
+        quantity: input.quantity,
+        purchase_date: input.purchase_date,
+        expiration_date: input.expiration_date ?? null,
+        storage_location: input.storage_location,
+      },
+    });
+    return row.entry_id;
   },
 
-  update(id: number, input: UpdateInventoryEntryInput): void {
-    execute(
-      `UPDATE InventoryEntry SET quantity = ?, expiration_date = ?, storage_location = ?
-       WHERE entry_id = ?`,
-      [input.quantity, input.expiration_date ?? null, input.storage_location, id]
-    );
+  async update(id: number, input: UpdateInventoryEntryInput): Promise<void> {
+    await prisma.inventoryEntry.update({
+      where: { entry_id: id },
+      data: {
+        quantity: input.quantity,
+        expiration_date: input.expiration_date ?? null,
+        storage_location: input.storage_location,
+      },
+    });
   },
 
-  delete(id: number): void {
-    execute("DELETE FROM InventoryEntry WHERE entry_id = ?", [id]);
+  async delete(id: number): Promise<void> {
+    await prisma.inventoryEntry.delete({ where: { entry_id: id } });
   },
 };

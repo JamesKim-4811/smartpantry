@@ -13,20 +13,21 @@ export const recipeService = {
 
   // Business logic: a recipe is "cookable" only if every required ingredient
   // has sufficient quantity in the household's current inventory.
-  getSuggestions(householdId: number): RecipeView[] {
-    const allRecipeIds = recipeRepository.findAllIds();
+  async getSuggestions(householdId: number): Promise<RecipeView[]> {
+    const allRecipeIds = await recipeRepository.findAllIds();
     const cookable: RecipeView[] = [];
 
     for (const recipeId of allRecipeIds) {
-      const ingredients = recipeRepository.findIngredientsRaw(recipeId);
+      const ingredients = await recipeRepository.findIngredientsRaw(recipeId);
 
-      const canCook = ingredients.every((ing) => {
-        const stock = inventoryRepository.getTotalStock(householdId, ing.food_item_id);
-        return stock >= ing.quantity;
-      });
+      let canCook = true;
+      for (const ing of ingredients) {
+        const stock = await inventoryRepository.getTotalStock(householdId, ing.food_item_id);
+        if (stock < ing.quantity) { canCook = false; break; }
+      }
 
       if (canCook) {
-        const recipe = recipeRepository.findById(recipeId);
+        const recipe = await recipeRepository.findById(recipeId);
         if (recipe) cookable.push(recipe);
       }
     }
@@ -34,13 +35,13 @@ export const recipeService = {
     return cookable;
   },
 
-  create(input: CreateRecipeInput) {
-    const id = recipeRepository.create(input);
+  async create(input: CreateRecipeInput) {
+    const id = await recipeRepository.create(input);
     return { recipe_id: id, name: input.name };
   },
 
-  addIngredient(recipeId: number, input: CreateRecipeIngredientInput) {
-    const id = recipeRepository.addIngredient(recipeId, input);
+  async addIngredient(recipeId: number, input: CreateRecipeIngredientInput) {
+    const id = await recipeRepository.addIngredient(recipeId, input);
     return { recipe_ingredient_id: id };
   },
 };

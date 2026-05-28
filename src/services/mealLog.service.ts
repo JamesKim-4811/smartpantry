@@ -10,17 +10,17 @@ export const mealLogService = {
     return mealLogRepository.getNutritionSummaryByHousehold(householdId);
   },
 
-  createLog(input: CreateMealLogInput) {
-    const id = mealLogRepository.createLog(input);
+  async createLog(input: CreateMealLogInput) {
+    const id = await mealLogRepository.createLog(input);
     return { meal_log_id: id };
   },
 
-  addEntry(logId: number, input: CreateMealLogEntryInput) {
-    const id = mealLogRepository.createEntry(logId, input);
+  async addEntry(logId: number, input: CreateMealLogEntryInput) {
+    const id = await mealLogRepository.createEntry(logId, input);
     return { entry_id: id };
   },
 
-  deleteLog(logId: number) {
-    mealLogRepository.deleteLog(logId);
+  async deleteLog(logId: number) {
+    await mealLogRepository.deleteLog(logId);
   },
 };

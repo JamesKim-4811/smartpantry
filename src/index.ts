@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-import { initDb } from "./db";
 import { errorHandler } from "./middleware/errorHandler";
 import { householdRouter } from "./routes/household.routes";
 import { userRouter } from "./routes/user.routes";
@@ -18,8 +17,6 @@ import {
 const PORT = 3001;
 
 async function main() {
-  await initDb();
-
   const app = express();
   app.use(cors({ origin: "*" }));
   app.use(express.json());

@@ -6,19 +6,19 @@ export const foodItemService = {
     return foodItemRepository.findAll();
   },
 
-  create(input: CreateFoodItemInput) {
+  async create(input: CreateFoodItemInput) {
     if (!input.name?.trim()) throw new Error("Food item name is required");
-    const id = foodItemRepository.create(input);
+    const id = await foodItemRepository.create(input);
     return { food_item_id: id, ...input };
   },
 
-  update(id: number, input: UpdateFoodItemInput) {
-    foodItemRepository.update(id, input);
+  async update(id: number, input: UpdateFoodItemInput) {
+    await foodItemRepository.update(id, input);
     return { food_item_id: id, ...input };
   },
 
-  delete(id: number) {
-    foodItemRepository.delete(id);
+  async delete(id: number) {
+    await foodItemRepository.delete(id);
   },
 };
 

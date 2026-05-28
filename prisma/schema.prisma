@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Household {
+  household_id    Int               @id @default(autoincrement())
+  name            String
+  users           User[]
+  inventoryEntries InventoryEntry[]
+  shoppingLists   ShoppingList[]
+}
+
+model User {
+  user_id         Int               @id @default(autoincrement())
+  first_name      String
+  last_name       String
+  email           String            @unique
+  password_hash   String
+  role            String            // 'Admin' | 'Member' | 'Viewer'
+  household_id    Int
+  household       Household         @relation(fields: [household_id], references: [household_id])
+  inventoryEntries InventoryEntry[]
+  mealLogs        MealLog[]
+  shoppingListItems ShoppingListItem[]
+  recipes         Recipe[]
+  notifications   Notification[]
+}
+
+model FoodItem {
+  food_item_id       Int                @id @default(autoincrement())
+  name               String
+  calories_per_unit  Float?
+  protein_per_unit   Float?
+  carbs_per_unit     Float?
+  fat_per_unit       Float?
+  inventoryEntries   InventoryEntry[]
+  mealLogEntries     MealLogEntry[]
+  shoppingListItems  ShoppingListItem[]
+  recipeIngredients  RecipeIngredient[]
+}
+
+model Unit {
+  unit_id           Int                @id @default(autoincrement())
+  unit_name         String
+  unit_type         String?
+  inventoryEntries  InventoryEntry[]
+  mealLogEntries    MealLogEntry[]
+  shoppingListItems ShoppingListItem[]
+  recipeIngredients RecipeIngredient[]
+}
+
+model InventoryEntry {
+  entry_id          Int       @id @default(autoincrement())
+  household_id      Int
+  food_item_id      Int
+  unit_id           Int
+  added_by_user_id  Int
+  quantity          Float
+  purchase_date     String
+  expiration_date   String?
+  storage_location  String    // 'fridge' | 'pantry' | 'freezer'
+  household         Household @relation(fields: [household_id], references: [household_id])
+  food_item         FoodItem  @relation(fields: [food_item_id], references: [food_item_id])
+  unit              Unit      @relation(fields: [unit_id], references: [unit_id])
+  added_by          User      @relation(fields: [added_by_user_id], references: [user_id])
+}
+
+model MealLog {
+  meal_log_id Int            @id @default(autoincrement())
+  user_id     Int
+  logged_at   String
+  notes       String?
+  user        User           @relation(fields: [user_id], references: [user_id])
+  entries     MealLogEntry[]
+}
+
+model MealLogEntry {
+  entry_id     Int      @id @default(autoincrement())
+  meal_log_id  Int
+  food_item_id Int
+  unit_id      Int
+  quantity     Float
+  meal_log     MealLog  @relation(fields: [meal_log_id], references: [meal_log_id])
+  food_item    FoodItem @relation(fields: [food_item_id], references: [food_item_id])
+  unit         Unit     @relation(fields: [unit_id], references: [unit_id])
+}
+
+model ShoppingList {
+  list_id      Int               @id @default(autoincrement())
+  household_id Int               @unique
+  created_at   String
+  household    Household         @relation(fields: [household_id], references: [household_id])
+  items        ShoppingListItem[]
+}
+
+model ShoppingListItem {
+  item_id          Int          @id @default(autoincrement())
+  list_id          Int
+  food_item_id     Int
+  unit_id          Int
+  added_by_user_id Int
+  quantity         Float
+  is_purchased     Boolean      @default(false)
+  added_at         String
+  shopping_list    ShoppingList @relation(fields: [list_id], references: [list_id])
+  food_item        FoodItem     @relation(fields: [food_item_id], references: [food_item_id])
+  unit             Unit         @relation(fields: [unit_id], references: [unit_id])
+  added_by         User         @relation(fields: [added_by_user_id], references: [user_id])
+}
+
+model Recipe {
+  recipe_id           Int                @id @default(autoincrement())
+  name                String
+  description         String?
+  created_by_user_id  Int
+  created_by          User               @relation(fields: [created_by_user_id], references: [user_id])
+  ingredients         RecipeIngredient[]
+}
+
+model RecipeIngredient {
+  recipe_ingredient_id Int      @id @default(autoincrement())
+  recipe_id            Int
+  food_item_id         Int
+  unit_id              Int
+  quantity             Float
+  recipe               Recipe   @relation(fields: [recipe_id], references: [recipe_id])
+  food_item            FoodItem @relation(fields: [food_item_id], references: [food_item_id])
+  unit                 Unit     @relation(fields: [unit_id], references: [unit_id])
+}
+
+model Notification {
+  notification_id Int    @id @default(autoincrement())
+  user_id         Int
+  message         String
+  created_at      String
+  is_read         Boolean @default(false)
+  user            User    @relation(fields: [user_id], references: [user_id])
+}

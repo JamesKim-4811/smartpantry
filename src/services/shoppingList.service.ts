@@ -6,17 +6,17 @@ export const shoppingListService = {
     return shoppingListRepository.findByHousehold(householdId);
   },
 
-  addItem(input: CreateShoppingListItemInput) {
-    const id = shoppingListRepository.createItem(input);
+  async addItem(input: CreateShoppingListItemInput) {
+    const id = await shoppingListRepository.createItem(input);
     return { item_id: id };
   },
 
-  markPurchased(itemId: number, isPurchased: boolean) {
-    shoppingListRepository.markPurchased(itemId, isPurchased);
+  async markPurchased(itemId: number, isPurchased: boolean) {
+    await shoppingListRepository.markPurchased(itemId, isPurchased);
     return { item_id: itemId, is_purchased: isPurchased };
   },
 
-  deleteItem(itemId: number) {
-    shoppingListRepository.deleteItem(itemId);
+  async deleteItem(itemId: number) {
+    await shoppingListRepository.deleteItem(itemId);
   },
 };

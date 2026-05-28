@@ -1,51 +1,70 @@
-import { query, execute } from "../queryHelper";
-import { User, CreateUserInput, UpdateUserInput } from "../models";
+import prisma from "../db";
+import { User, CreateUserInput, UpdateUserInput, UserRole } from "../models";
 
 export interface UserWithHousehold extends User {
   household_name: string;
 }
 
 export const userRepository = {
-  findByHousehold(householdId: number): UserWithHousehold[] {
-    return query<UserWithHousehold>(
-      `SELECT u.user_id, u.first_name, u.last_name, u.email, u.role,
-              u.household_id, h.name AS household_name
-       FROM User u
-       JOIN Household h ON u.household_id = h.household_id
-       WHERE u.household_id = ?
-       ORDER BY u.role, u.last_name`,
-      [householdId]
-    );
+  async findByHousehold(householdId: number): Promise<UserWithHousehold[]> {
+    const rows = await prisma.user.findMany({
+      where: { household_id: householdId },
+      include: { household: true },
+      orderBy: [{ role: "asc" }, { last_name: "asc" }],
+    });
+    return rows.map((r) => ({
+      user_id: r.user_id,
+      first_name: r.first_name,
+      last_name: r.last_name,
+      email: r.email,
+      password_hash: r.password_hash,
+      role: r.role as UserRole,
+      household_id: r.household_id,
+      household_name: r.household.name,
+    }));
   },
 
-  findById(id: number): User | undefined {
-    return query<User>("SELECT * FROM User WHERE user_id = ?", [id])[0];
+  async findById(id: number): Promise<User | undefined> {
+    const row = await prisma.user.findUnique({ where: { user_id: id } });
+    if (!row) return undefined;
+    return {
+      user_id: row.user_id,
+      first_name: row.first_name,
+      last_name: row.last_name,
+      email: row.email,
+      password_hash: row.password_hash,
+      role: row.role as UserRole,
+      household_id: row.household_id,
+    };
   },
 
-  create(input: CreateUserInput): number {
-    return execute(
-      `INSERT INTO User (first_name, last_name, email, password_hash, role, household_id)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        input.first_name,
-        input.last_name,
-        input.email,
-        input.password_hash ?? "",
-        input.role,
-        input.household_id,
-      ]
-    );
+  async create(input: CreateUserInput): Promise<number> {
+    const row = await prisma.user.create({
+      data: {
+        first_name: input.first_name,
+        last_name: input.last_name,
+        email: input.email,
+        password_hash: input.password_hash ?? "",
+        role: input.role,
+        household_id: input.household_id,
+      },
+    });
+    return row.user_id;
   },
 
-  update(id: number, input: UpdateUserInput): void {
-    execute(
-      `UPDATE User SET first_name = ?, last_name = ?, email = ?, role = ?
-       WHERE user_id = ?`,
-      [input.first_name, input.last_name, input.email, input.role, id]
-    );
+  async update(id: number, input: UpdateUserInput): Promise<void> {
+    await prisma.user.update({
+      where: { user_id: id },
+      data: {
+        first_name: input.first_name,
+        last_name: input.last_name,
+        email: input.email,
+        role: input.role,
+      },
+    });
   },
 
-  delete(id: number): void {
-    execute("DELETE FROM User WHERE user_id = ?", [id]);
+  async delete(id: number): Promise<void> {
+    await prisma.user.delete({ where: { user_id: id } });
   },
 };

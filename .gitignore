@@ -3,3 +3,5 @@ dist/
 smartpantry.db
 .env
 .DS_Store
+
+/src/generated/prisma
