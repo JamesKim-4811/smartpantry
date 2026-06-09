@@ -9,12 +9,22 @@ A household pantry management REST API. Track food inventory, meal logs, nutriti
 
 ## Setup
 
+**Backend** (runs on port 3001):
 ```bash
 npm install
 npm run db:migrate   # create/migrate the database
 npm run db:seed      # populate with sample data (The Johnson Household)
-npm run dev          # start dev server on http://localhost:3001
+npm run dev
 ```
+
+**Frontend** (runs on port 5173):
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Then open http://localhost:5173
 
 ## Database
 
@@ -42,15 +52,20 @@ npm run db:migrate   # run after any schema changes (prisma/schema.prisma)
 ## Project Structure
 
 ```
-src/
-  index.ts          # app entry point
-  db.ts             # Prisma client singleton
-  routes/           # Express routers
-  services/         # business logic
-  repositories/     # Prisma queries
-  models/           # TypeScript interfaces & input types
+src/                  # Express API
+  index.ts
+  db.ts
+  routes/
+  services/
+  repositories/
+  models/
+client/               # React + Vite frontend
+  src/
+    api.ts            # typed fetch wrappers for all endpoints
+    pages/            # Dashboard, Inventory, Shopping, MealLogs, Nutrition, Recipes
+    components/       # Layout (sidebar nav)
 prisma/
-  schema.prisma     # database schema
-  seed.ts           # sample data
-  smartpantry.db    # SQLite database file
+  schema.prisma
+  seed.ts
+  smartpantry.db
 ```
