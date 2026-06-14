@@ -8,6 +8,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: `file:${path.resolve(__dirname, "prisma/smartpantry.db")}`,
+    url: process.env.DATABASE_URL,
   },
 });

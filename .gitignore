@@ -1,5 +1,6 @@
 node_modules/
 dist/
+public/
 smartpantry.db
 .env
 .DS_Store

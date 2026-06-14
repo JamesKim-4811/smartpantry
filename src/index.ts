@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 import { errorHandler } from "./middleware/errorHandler";
 import { householdRouter } from "./routes/household.routes";
 import { userRouter } from "./routes/user.routes";
@@ -14,7 +15,7 @@ import {
   notificationRouter,
 } from "./routes/domain.routes";
 
-const PORT = 3001;
+const PORT = process.env.PORT ?? 3001;
 
 async function main() {
   const app = express();
@@ -34,7 +35,12 @@ async function main() {
   app.use("/api/notifications",  notificationRouter);
 
   // Health check
-  app.get("/", (_req, res) => res.json({ status: "ok" }));
+  app.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+  // Serve frontend static files (production)
+  const publicDir = path.join(__dirname, "../public");
+  app.use(express.static(publicDir));
+  app.get("*", (_req, res) => res.sendFile(path.join(publicDir, "index.html")));
 
   // Must be registered AFTER all routes
   app.use(errorHandler);

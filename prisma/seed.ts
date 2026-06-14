@@ -1,11 +1,7 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import path from "path";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const adapter = new PrismaBetterSqlite3({
-  url: `file:${path.resolve(__dirname, "smartpantry.db")}`,
-});
-
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
 function future(days: number): string {
@@ -15,6 +11,12 @@ function future(days: number): string {
 }
 
 async function main() {
+  const existing = await prisma.household.count();
+  if (existing > 0) {
+    console.log("⏭️  Data exists, skipping seed.");
+    return;
+  }
+
   const today = new Date().toISOString().split("T")[0];
 
   // Household
