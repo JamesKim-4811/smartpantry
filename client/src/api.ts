@@ -102,10 +102,19 @@ export interface FoodItem {
 }
 export interface Unit { unit_id: number; unit_name: string; unit_type: string | null }
 export interface InventoryEntry {
-  entry_id: number; household_id: number; food_item_id: number; unit_id: number
-  added_by_user_id: number; quantity: number; purchase_date: string
-  expiration_date: string | null; storage_location: string
-  food_item: string; unit_name: string; added_by: string; days_until_expiry: number | null
+  entry_id: number; 
+  household_id: number; 
+  food_item_id: number; 
+  unit_id: number
+  added_by_user_id: number; 
+  quantity: number; 
+  purchase_date: string
+  expiration_date: string | null; 
+  storage_location: string
+  food_item: string; 
+  unit_name: string; 
+  added_by: string; 
+  days_until_expiry: number | null
 }
 export interface ShoppingListItem {
   item_id: number; list_id: number; food_item_id: number; unit_id: number
