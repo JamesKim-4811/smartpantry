@@ -21,18 +21,14 @@ async function main() {
 
   // Household
   const household = await prisma.household.create({
-    data: { name: "The Johnson Household" },
+    data: { name: "The Kim-Dawson Household" },
   });
 
   // Users
-  await prisma.user.createMany({
-    data: [
-      { first_name: "Sarah",    last_name: "Johnson", email: "sarah.johnson@email.com", password_hash: "hash1", role: "Admin",  household_id: household.household_id },
-      { first_name: "Mike",     last_name: "Johnson", email: "mike.johnson@email.com",  password_hash: "hash2", role: "Member", household_id: household.household_id },
-      { first_name: "Emma",     last_name: "Johnson", email: "emma.johnson@email.com",  password_hash: "hash3", role: "Member", household_id: household.household_id },
-      { first_name: "Dr. Lisa", last_name: "Chen",    email: "lisa.chen@email.com",     password_hash: "hash4", role: "Viewer", household_id: household.household_id },
-    ],
-  });
+  const [james, dijonay] = await Promise.all([
+    prisma.user.create({ data: { first_name: "James",   last_name: "Kim",    email: "james.kim@email.com",    password_hash: "hash1", role: "Admin",  household_id: household.household_id } }),
+    prisma.user.create({ data: { first_name: "Dijonay", last_name: "Dawson", email: "dijonay.dawson@email.com", password_hash: "hash2", role: "Member", household_id: household.household_id } }),
+  ]);
 
   // Units
   await prisma.unit.createMany({
@@ -69,31 +65,31 @@ async function main() {
     ],
   });
 
-  // Inventory entries (food_item_id and unit_id match insertion order above, 1-indexed)
+  // Inventory entries
   await prisma.inventoryEntry.createMany({
     data: [
-      { household_id: 1, food_item_id: 1,  unit_id: 5, added_by_user_id: 1, quantity: 2.0,   purchase_date: today, expiration_date: future(5),   storage_location: "fridge"  },
-      { household_id: 1, food_item_id: 2,  unit_id: 4, added_by_user_id: 2, quantity: 1.0,   purchase_date: today, expiration_date: future(7),   storage_location: "fridge"  },
-      { household_id: 1, food_item_id: 3,  unit_id: 5, added_by_user_id: 1, quantity: 12.0,  purchase_date: today, expiration_date: future(14),  storage_location: "fridge"  },
-      { household_id: 1, food_item_id: 4,  unit_id: 6, added_by_user_id: 2, quantity: 8.0,   purchase_date: today, expiration_date: future(3),   storage_location: "fridge"  },
-      { household_id: 1, food_item_id: 5,  unit_id: 1, added_by_user_id: 1, quantity: 200.0, purchase_date: today, expiration_date: future(30),  storage_location: "fridge"  },
-      { household_id: 1, food_item_id: 8,  unit_id: 1, added_by_user_id: 2, quantity: 500.0, purchase_date: today, expiration_date: future(180), storage_location: "pantry"  },
-      { household_id: 1, food_item_id: 9,  unit_id: 3, added_by_user_id: 1, quantity: 500.0, purchase_date: today, expiration_date: future(365), storage_location: "pantry"  },
-      { household_id: 1, food_item_id: 10, unit_id: 1, added_by_user_id: 3, quantity: 400.0, purchase_date: today, expiration_date: future(200), storage_location: "pantry"  },
+      { household_id: household.household_id, food_item_id: 1,  unit_id: 5, added_by_user_id: james.user_id,   quantity: 2.0,   purchase_date: today, expiration_date: future(5),   storage_location: "fridge"  },
+      { household_id: household.household_id, food_item_id: 2,  unit_id: 4, added_by_user_id: dijonay.user_id, quantity: 1.0,   purchase_date: today, expiration_date: future(7),   storage_location: "fridge"  },
+      { household_id: household.household_id, food_item_id: 3,  unit_id: 5, added_by_user_id: james.user_id,   quantity: 12.0,  purchase_date: today, expiration_date: future(14),  storage_location: "fridge"  },
+      { household_id: household.household_id, food_item_id: 4,  unit_id: 6, added_by_user_id: dijonay.user_id, quantity: 8.0,   purchase_date: today, expiration_date: future(3),   storage_location: "fridge"  },
+      { household_id: household.household_id, food_item_id: 5,  unit_id: 1, added_by_user_id: james.user_id,   quantity: 200.0, purchase_date: today, expiration_date: future(30),  storage_location: "fridge"  },
+      { household_id: household.household_id, food_item_id: 8,  unit_id: 1, added_by_user_id: dijonay.user_id, quantity: 500.0, purchase_date: today, expiration_date: future(180), storage_location: "pantry"  },
+      { household_id: household.household_id, food_item_id: 9,  unit_id: 3, added_by_user_id: james.user_id,   quantity: 500.0, purchase_date: today, expiration_date: future(365), storage_location: "pantry"  },
+      { household_id: household.household_id, food_item_id: 10, unit_id: 1, added_by_user_id: dijonay.user_id, quantity: 400.0, purchase_date: today, expiration_date: future(200), storage_location: "pantry"  },
     ],
   });
 
   // Shopping list
   const shoppingList = await prisma.shoppingList.create({
-    data: { household_id: 1, created_at: `${today} 10:00:00` },
+    data: { household_id: household.household_id, created_at: `${today} 10:00:00` },
   });
 
   await prisma.shoppingListItem.createMany({
     data: [
-      { list_id: shoppingList.list_id, food_item_id: 2,  unit_id: 4, added_by_user_id: 2, quantity: 2.0,  is_purchased: false, added_at: `${today} 10:05:00` },
-      { list_id: shoppingList.list_id, food_item_id: 3,  unit_id: 5, added_by_user_id: 1, quantity: 12.0, is_purchased: false, added_at: `${today} 10:06:00` },
-      { list_id: shoppingList.list_id, food_item_id: 4,  unit_id: 6, added_by_user_id: 3, quantity: 1.0,  is_purchased: false, added_at: `${today} 10:10:00` },
-      { list_id: shoppingList.list_id, food_item_id: 12, unit_id: 5, added_by_user_id: 2, quantity: 6.0,  is_purchased: true,  added_at: `${today} 10:12:00` },
+      { list_id: shoppingList.list_id, food_item_id: 2,  unit_id: 4, added_by_user_id: dijonay.user_id, quantity: 2.0,  is_purchased: false, added_at: `${today} 10:05:00` },
+      { list_id: shoppingList.list_id, food_item_id: 3,  unit_id: 5, added_by_user_id: james.user_id,   quantity: 12.0, is_purchased: false, added_at: `${today} 10:06:00` },
+      { list_id: shoppingList.list_id, food_item_id: 4,  unit_id: 6, added_by_user_id: dijonay.user_id, quantity: 1.0,  is_purchased: false, added_at: `${today} 10:10:00` },
+      { list_id: shoppingList.list_id, food_item_id: 12, unit_id: 5, added_by_user_id: james.user_id,   quantity: 6.0,  is_purchased: true,  added_at: `${today} 10:12:00` },
     ],
   });
 
