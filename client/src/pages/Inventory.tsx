@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { z } from 'zod'
 import {
   getHouseholds, getInventory, getFoodItems, getUnits, getHouseholdUsers,
   createInventoryEntry, updateInventoryEntry, deleteInventoryEntry,
@@ -6,6 +7,17 @@ import {
 } from '../api'
 
 const LOCATIONS = ['fridge', 'pantry', 'freezer']
+
+const inventorySchema = z.object({
+  food_item_id: z.coerce.number().int().positive('Food item required'),
+  unit_id: z.coerce.number().int().positive('Unit required'),
+  added_by_user_id: z.coerce.number().int().positive('User required'),
+  quantity: z.coerce.number().positive('Quantity must be greater than 0'),
+  purchase_date: z.string().date('Invalid purchase date'),
+  expiration_date: z.string().date().optional().or(z.literal('')),
+  storage_location: z.string().min(1, 'Storage location required'),
+  household_id: z.coerce.number().int().positive('Household required'),
+})
 
 export default function Inventory() {
   const [entries, setEntries] = useState<InventoryEntry[]>([])
@@ -142,10 +154,10 @@ function InventoryModal({ editing, foodItems, units, users, householdId, onClose
   onSave: () => void
 }) {
   const [form, setForm] = useState({
-    food_item_id: editing?.food_item_id ?? foodItems[0]?.food_item_id ?? '',
+    food_item_id: editing?.food_item_id ?? foodItems[0]?.food_item_id,
     unit_id: editing?.unit_id ?? units[0]?.unit_id ?? '',
     added_by_user_id: editing?.added_by_user_id ?? users[0]?.user_id ?? '',
-    quantity: editing?.quantity ?? '',
+    quantity: editing?.quantity ?? undefined,
     purchase_date: editing?.purchase_date ?? new Date().toISOString().split('T')[0],
     expiration_date: editing?.expiration_date ?? '',
     storage_location: editing?.storage_location ?? 'fridge',
@@ -153,22 +165,31 @@ function InventoryModal({ editing, foodItems, units, users, householdId, onClose
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-
+  const isValid = Boolean(
+    form.food_item_id &&
+    form.unit_id &&
+    form.added_by_user_id &&
+    form.quantity &&
+    form.purchase_date
+  );
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true); setError('')
     try {
+      const validated = inventorySchema.parse(form)
       if (editing) {
         await updateInventoryEntry(editing.entry_id, {
-          quantity: Number(form.quantity),
-          expiration_date: form.expiration_date || null,
-          storage_location: form.storage_location,
+          quantity: validated.quantity,
+          expiration_date: validated.expiration_date || null,
+          storage_location: validated.storage_location,
         })
       } else {
-        await createInventoryEntry({ ...form, quantity: Number(form.quantity) })
+        await createInventoryEntry(validated)
       }
       onSave()
-    } catch (err: any) { setError(err.message) }
+    } catch (err: any) { 
+      setError(err.message || 'Validation error')
+    }
     setSaving(false)
   }
 
@@ -223,9 +244,10 @@ function InventoryModal({ editing, foodItems, units, users, householdId, onClose
             <input type="date" value={form.expiration_date} onChange={f('expiration_date')} />
           </div>
           {error && <p className="error-msg">{error}</p>}
+
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
+            <button type="submit" className="btn btn-primary" disabled={saving && !isValid}>
               {saving ? 'Saving…' : 'Save'}
             </button>
           </div>
