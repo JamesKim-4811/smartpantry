@@ -147,7 +147,7 @@ function NewRecipeModal({ foodItems, units, users, onClose, onSave }: {
 }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [createdBy, setCreatedBy] = useState(users[0]?.user_id ?? '')
+  const [createdBy, setCreatedBy] = useState<number>(users[0]?.user_id ?? 0)
   const [ingredients, setIngredients] = useState([{ food_item_id: foodItems[0]?.food_item_id ?? '', unit_id: units[0]?.unit_id ?? '', quantity: '' }])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -168,7 +168,7 @@ function NewRecipeModal({ foodItems, units, users, onClose, onSave }: {
     e.preventDefault()
     setSaving(true); setError('')
     try {
-      const res = await createRecipe({ name, description: description || null, created_by_user_id: Number(createdBy) })
+      const res = await createRecipe({ name, description: description || null, created_by_user_id: createdBy })
       const recipeId = (res as any).recipe_id
       await Promise.all(ingredients.map(ing =>
         addRecipeIngredient(recipeId, { food_item_id: Number(ing.food_item_id), unit_id: Number(ing.unit_id), quantity: Number(ing.quantity) })
@@ -193,7 +193,7 @@ function NewRecipeModal({ foodItems, units, users, onClose, onSave }: {
           </div>
           <div className="form-row">
             <label>Created by</label>
-            <select value={createdBy} onChange={e => setCreatedBy(e.target.value)}>
+            <select value={createdBy} onChange={e => setCreatedBy(Number(e.target.value))}>
               {users.map(u => <option key={u.user_id} value={u.user_id}>{u.first_name} {u.last_name}</option>)}
             </select>
           </div>
