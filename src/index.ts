@@ -37,13 +37,13 @@ async function main() {
   // Health check
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
+  // Must be registered AFTER all API routes
+  app.use(errorHandler);
+
   // Serve frontend static files (production)
   const publicDir = path.join(__dirname, "../public");
   app.use(express.static(publicDir));
   app.get("*", (_req, res) => res.sendFile(path.join(publicDir, "index.html")));
-
-  // Must be registered AFTER all routes
-  app.use(errorHandler);
 
   app.listen(PORT, () => {
     console.log(`\n🚀 SmartPantry API → http://localhost:${PORT}`);
