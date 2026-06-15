@@ -6,7 +6,7 @@ import Shopping from './pages/Shopping'
 import MealLogs from './pages/MealLogs'
 import Nutrition from './pages/Nutrition'
 import Recipes from './pages/Recipes'
-
+// 
 export default function App() {
   return (
     <BrowserRouter>
