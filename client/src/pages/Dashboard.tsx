@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getHouseholds, getExpiring, getShoppingList, getNutrition, createFoodItem, type Household, type InventoryEntry, type ShoppingListItem, type NutritionSummary, type FoodItem } from '../api'
+import { getHouseholds, getExpiring, getShoppingList, getNutrition, createFoodItem, getFoodItems, deleteFoodItem, type Household, type InventoryEntry, type ShoppingListItem, type NutritionSummary, type FoodItem } from '../api'
 
 export default function Dashboard() {
   const [household, setHousehold] = useState<Household | null>(null)
@@ -8,6 +8,7 @@ export default function Dashboard() {
   const [nutrition, setNutrition] = useState<NutritionSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [showFoodModal, setShowFoodModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   useEffect(() => {
     getHouseholds().then(async (hh) => {
@@ -47,9 +48,14 @@ export default function Dashboard() {
           <h1>{household?.name ?? 'Dashboard'}</h1>
           <p>Here's what's going on in your pantry today.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowFoodModal(true)}>
-          + New Food Item
-        </button>
+        <div className="flex gap-2">
+          <button className="btn btn-ghost" onClick={() => setShowDeleteModal(true)}>
+            Delete Food Item
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowFoodModal(true)}>
+            + New Food Item
+          </button>
+        </div>
       </div>
 
       <div className="grid-3 mb-4">
@@ -133,6 +139,11 @@ export default function Dashboard() {
           onSave={() => setShowFoodModal(false)}
         />
       )}
+      {showDeleteModal && (
+        <DeleteFoodItemModal
+          onClose={() => setShowDeleteModal(false)}
+        />
+      )}
     </>
   )
 }
@@ -203,6 +214,88 @@ function NewFoodItemModal({ onClose, onSave }: { onClose: () => void; onSave: ()
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+function DeleteFoodItemModal({ onClose }: { onClose: () => void }) {
+  const [foodItems, setFoodItems] = useState<FoodItem[]>([])
+  const [selected, setSelected] = useState<number | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState('')
+  const [filter, setFilter] = useState('')
+
+  useEffect(() => {
+    getFoodItems().then(setFoodItems)
+  }, [])
+
+  async function handleDelete() {
+    if (!selected) return
+    if (!confirm('Delete this food item? This cannot be undone.')) return
+    setDeleting(true); setError('')
+    try {
+      await deleteFoodItem(selected)
+      setFoodItems(prev => prev.filter(f => f.food_item_id !== selected))
+      // setSelected(null)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+    }
+    setDeleting(false)
+  }
+
+  const filtered = foodItems.filter(f => f.name.toLowerCase().includes(filter.toLowerCase()))
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h2>Delete Food Item</h2>
+        <div className="form-row">
+          <label>Search</label>
+          <input
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            placeholder="Filter food items…"
+            autoFocus
+          />
+        </div>
+        <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 7, marginBottom: 14 }}>
+          {filtered.length === 0 ? (
+            <div className="empty">No items found.</div>
+          ) : (
+            filtered.map(f => (
+              <div
+                key={f.food_item_id}
+                onClick={() => setSelected(f.food_item_id)}
+                style={{
+                  padding: '10px 14px',
+                  cursor: 'pointer',
+                  background: selected === f.food_item_id ? 'var(--surface2)' : 'transparent',
+                  borderLeft: selected === f.food_item_id ? '3px solid var(--danger)' : '3px solid transparent',
+                  fontSize: 13.5,
+                }}
+              >
+                {f.name}
+                {f.calories_per_unit != null && (
+                  <span className="text-muted" style={{ fontSize: 12, marginLeft: 8 }}>
+                    {f.calories_per_unit} kcal/unit
+                  </span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+        {error && <p className="error-msg">{error}</p>}
+        <div className="modal-actions">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button
+            className="btn btn-danger"
+            onClick={handleDelete}
+            disabled={!selected || deleting}
+          >
+            {deleting ? 'Deleting…' : 'Delete Selected'}
+          </button>
+        </div>
       </div>
     </div>
   )
