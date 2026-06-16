@@ -1,4 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useState } from 'react'
+import {NewFoodItemModal} from '../components/NewFoodItemModal'
 
 const links = [
   { to: '/',             icon: '🏠', label: 'Dashboard'     },
@@ -10,6 +12,9 @@ const links = [
 ]
 
 export default function Layout() {
+  const [showFoodModal, setShowFoodModal] = useState(false)
+
+  
   return (
     <div className="layout">
       <aside className="sidebar">
@@ -26,6 +31,13 @@ export default function Layout() {
               <span>{label}</span>
             </NavLink>
           ))}
+          <button className="btn btn-primary" onClick={() => setShowFoodModal(true)}>+ New Food Item</button>
+          {showFoodModal && (
+            <NewFoodItemModal
+              onClose={() => setShowFoodModal(false)}
+              onSave={() => setShowFoodModal(false)}
+            />
+          )}
         </nav>
       </aside>
       <main className="main">
