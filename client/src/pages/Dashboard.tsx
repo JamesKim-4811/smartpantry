@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getHouseholds, getExpiring, getShoppingList, getNutrition, type Household, type InventoryEntry, type ShoppingListItem, type NutritionSummary } from '../api'
+import { getHouseholds, getExpiring, getShoppingList, getNutrition, createFoodItem, type Household, type InventoryEntry, type ShoppingListItem, type NutritionSummary, type FoodItem } from '../api'
 
 export default function Dashboard() {
   const [household, setHousehold] = useState<Household | null>(null)
@@ -7,6 +7,7 @@ export default function Dashboard() {
   const [shopping, setShopping] = useState<ShoppingListItem[]>([])
   const [nutrition, setNutrition] = useState<NutritionSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [showFoodModal, setShowFoodModal] = useState(false)
 
   useEffect(() => {
     getHouseholds().then(async (hh) => {
@@ -41,9 +42,14 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="page-header">
-        <h1>{household?.name ?? 'Dashboard'}</h1>
-        <p>Here's what's going on in your pantry today.</p>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <h1>{household?.name ?? 'Dashboard'}</h1>
+          <p>Here's what's going on in your pantry today.</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => setShowFoodModal(true)}>
+          + New Food Item
+        </button>
       </div>
 
       <div className="grid-3 mb-4">
@@ -120,6 +126,84 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {showFoodModal && (
+        <NewFoodItemModal
+          onClose={() => setShowFoodModal(false)}
+          onSave={() => setShowFoodModal(false)}
+        />
+      )}
     </>
+  )
+}
+
+function NewFoodItemModal({ onClose, onSave }: { onClose: () => void; onSave: () => void }) {
+  const [form, setForm] = useState<Partial<FoodItem>>({
+    name: '',
+    calories_per_unit: undefined,
+    protein_per_unit: undefined,
+    carbs_per_unit: undefined,
+    fat_per_unit: undefined,
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true); setError('')
+    try {
+      await createFoodItem(form)
+      onSave()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+    }
+    setSaving(false)
+  }
+
+  function f(field: keyof FoodItem) {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value
+      setForm(prev => ({
+        ...prev,
+        [field]: val === '' ? undefined : field === 'name' ? val : Number(val),
+      }))
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h2>New Food Item</h2>
+        <form onSubmit={submit}>
+          <div className="form-row">
+            <label>Name</label>
+            <input value={form.name ?? ''} onChange={f('name')} required placeholder="e.g. Chicken Thighs" />
+          </div>
+          <div className="form-row">
+            <label>Calories per unit</label>
+            <input type="number" step="0.001" value={form.calories_per_unit ?? ''} onChange={f('calories_per_unit')} placeholder="optional" />
+          </div>
+          <div className="form-row">
+            <label>Protein per unit (g)</label>
+            <input type="number" step="0.001" value={form.protein_per_unit ?? ''} onChange={f('protein_per_unit')} placeholder="optional" />
+          </div>
+          <div className="form-row">
+            <label>Carbs per unit (g)</label>
+            <input type="number" step="0.001" value={form.carbs_per_unit ?? ''} onChange={f('carbs_per_unit')} placeholder="optional" />
+          </div>
+          <div className="form-row">
+            <label>Fat per unit (g)</label>
+            <input type="number" step="0.001" value={form.fat_per_unit ?? ''} onChange={f('fat_per_unit')} placeholder="optional" />
+          </div>
+          {error && <p className="error-msg">{error}</p>}
+          <div className="modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Saving…' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }
